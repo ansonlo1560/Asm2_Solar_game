@@ -22,7 +22,8 @@ public class MainActivity extends AppCompatActivity {
     private View colorBlock;
     private final Handler handler = new Handler();
     private Runnable runnable;
-    private final ArgbEvaluator argbEvaluator = new ArgbEvaluator(); // 用於顏色插值
+    private final ArgbEvaluator argbEvaluator = new ArgbEvaluator();
+    private boolean isGameOver = false; // 標記遊戲是否結束
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,14 +43,13 @@ public class MainActivity extends AppCompatActivity {
         runnable = new Runnable() {
             @Override
             public void run() {
-                int brightnessValue = getScreenBrightness(MainActivity.this);
-                System.out.println("Brightness retrieved in onCreate: " + brightnessValue);
-                brightness.setText("Brightness: " + brightnessValue);
-
-                // 更新顏色和大小
-                updateColorAndSizeBasedOnBrightness(brightnessValue);
-
-                handler.postDelayed(this, 100);
+                if (!isGameOver) { // 只有遊戲未結束時才更新
+                    int brightnessValue = getScreenBrightness(MainActivity.this);
+                    System.out.println("Brightness retrieved in onCreate: " + brightnessValue);
+                    brightness.setText("請充電: ");
+                    updateColorAndSizeBasedOnBrightness(brightnessValue);
+                    handler.postDelayed(this, 100);
+                }
             }
         };
 
@@ -69,27 +69,37 @@ public class MainActivity extends AppCompatActivity {
         return brightness;
     }
 
-    // 根據亮度值更新顏色和大小
     private void updateColorAndSizeBasedOnBrightness(int brightnessValue) {
         // 顏色漸變
-        int startColor = Color.parseColor("#FF0000"); // 紅色 (亮度0)
-        int endColor = Color.parseColor("#00FF00");   // 綠色 (亮度255)
+        int startColor = Color.parseColor("#FF0000");
+        int endColor = Color.parseColor("#00FF00");
         float fraction = brightnessValue / 255.0f;
         int interpolatedColor = (int) argbEvaluator.evaluate(fraction, startColor, endColor);
-        colorBlock.setBackgroundTintList(ColorStateList.valueOf(interpolatedColor)); // 使用Tint改變顏色
+        colorBlock.setBackgroundTintList(ColorStateList.valueOf(interpolatedColor));
 
         // 大小變化
         int minWidth = 50;
-        int maxWidth = 200;
+        int maxWidth = 215;
         int newWidth = minWidth + (int) ((maxWidth - minWidth) * fraction);
         ViewGroup.LayoutParams params = colorBlock.getLayoutParams();
         params.width = dpToPx(newWidth);
         colorBlock.setLayoutParams(params);
+
+        // 檢查是否通關（使用亮度值判斷更可靠）
+        if (brightnessValue >= 230) {
+            endGame();
+        }
     }
 
-    // dp轉px輔助方法
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round(dp * density);
+    }
+
+    private void endGame() {
+        isGameOver = true; // 標記遊戲結束
+        System.out.println("通關");
+        brightness.setText("恭喜通關！");
+        handler.removeCallbacks(runnable); // 停止更新循環
     }
 }
